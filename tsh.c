@@ -165,6 +165,10 @@ int main(int argc, char **argv)
  */
 void eval(char *cmdline) 
 {
+	char *argv[MAXARGS];
+	int bg;
+	
+	
 	return;
 }
 
@@ -185,7 +189,7 @@ int parseline(const char *cmdline, char **argv)
 
 	strcpy(buf, cmdline);
 	buf[strlen(buf)-1] = ' ';  /* replace trailing '\n' with space */
-	while (*buf && (*buf == ' ')) /* ignore leading spaces */
+	while (*buf && (*buf == ' ')) /* ignore leading0 spaces */
 		buf++;
 
 	/* Build the argv list */
@@ -231,6 +235,12 @@ int parseline(const char *cmdline, char **argv)
  */
 int builtin_cmd(char **argv) 
 {
+	if (strcmp(&argv[0], "quit") ||
+		strcmp(&argv[0], "jobs") ||
+		strcmp(&argv[0], "bg") ||
+		strcmp(&argv[0], "fg") ||)
+		return 1;
+		
 	return 0;     /* not a builtin command */
 }
 
