@@ -165,12 +165,29 @@ int main(int argc, char **argv)
  */
 void eval(char *cmdline) 
 {
-	char *argv[MAXARGS];
 	int bg;
-	
-	bg = parseline(cmdline, argv);	
-	builtin = builtin_cmd(argv);
-	if (builtin)
+	int wstatus;
+	pid_t pid;
+	char *args[MAXARGS];
+
+	bg = parseline(cmdline, args);
+
+	if (!builtin_cmd(args)) {
+		/* execute cmd */
+		if ((pid = fork()) == 0) {
+			if (-1 == setgid(getpid())) {
+				unix_error("error: setgid failed\n");
+			}
+			if (-1 == execve(args[0], args, environ)) {
+				fprintf(stderr, "command not found!\n");
+			}
+		} else if (pid > 0) {
+			if (bg)
+				waitpid(pid, &wstatus, 0);
+		} else {
+			unix_error("error: fork failed\n");
+		}
+	}
 	return;
 }
 
@@ -183,15 +200,13 @@ void eval(char *cmdline)
  */
 int parseline(const char *cmdline, char **argv) 
 {
-	static char array[MAXLINE]; /* holds local copy of command line */
-	char *buf = array;          /* ptr that traverses command line */
 	char *delim;                /* points to first space delimiter */
 	int argc;                   /* number of args */
 	int bg;                     /* background job? */
 
 	strcpy(buf, cmdline);
 	buf[strlen(buf)-1] = ' ';  /* replace trailing '\n' with space */
-	while (*buf && (*buf == ' ')) /* ignore leading0 spaces */
+	while (*buf && (*buf == ' ')) /* ignore leading spaces */
 		buf++;
 
 	/* Build the argv list */
@@ -234,23 +249,24 @@ int parseline(const char *cmdline, char **argv)
 /* 
  * builtin_cmd - If the user has typed a built-in command then execute
  *    it immediately.  
+ *    (quit, jobs, bg, fg)
  */
 int builtin_cmd(char **argv) 
 {
-	if (!strcmp(argv[0], "quit"))
+	if (!strcmp(argv[0], "quit")) { /* terminate program */
 		exit(0);
+	}
 	if (!strcmp(argv[0], "jobs")) {
-		listjobs(jobs);	
+		listjobs(jobs); 
 		return 1;
 	}
-	if (!strcmp(argv[0], "bg") ||
-		!strcmp(argv[0], "fg")) {
-		do_bgfg(argv);
+	if (!strcmp(argv[0], "bg") || !strcmp(argv[0], "fg")) {
+		do_bgfg(argv); 
 		return 1;
 	}
-	if (!strcmp(argv[0], "&"))
+	if (!strcmp(argv[0], "&")) {
 		return 1;
-		
+	}
 	return 0;     /* not a builtin command */
 }
 
@@ -521,7 +537,6 @@ handler_t *Signal(int signum, handler_t *handler)
  */
 void sigquit_handler(int sig) 
 {
-	printf("Terminating after receipt of SIGQUIT signal\n");
 	exit(1);
 }
 
