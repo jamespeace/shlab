@@ -175,9 +175,9 @@ void eval(char *cmdline)
 	if (!builtin_cmd(args)) {
 		/* execute cmd */
 		if ((pid = fork()) == 0) {
-			if (-1 == setgid(getpid())) {
-				unix_error("error: setgid failed\n");
-			}
+//			if (-1 == setgid(getpid())) {
+//				unix_error("error: setgid failed\n");
+//			}
 			if (-1 == execve(args[0], args, environ)) {
 				fprintf(stderr, "command not found!\n");
 			}
