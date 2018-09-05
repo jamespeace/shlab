@@ -169,21 +169,23 @@ void eval(char *cmdline)
 	int wstatus;
 	pid_t pid;
 	char *args[MAXARGS];
+	sigset_t mask_all, mask_one, prev_one;
 
 	bg = parseline(cmdline, args);
 
 	if (!builtin_cmd(args)) {
-		/* execute cmd */
-		if ((pid = fork()) == 0) {
-//			if (-1 == setgid(getpid())) {
-//				unix_error("error: setgid failed\n");
-//			}
+		if ((pid = fork()) == 0) { /* Child process */
 			if (-1 == execve(args[0], args, environ)) {
 				fprintf(stderr, "command not found!\n");
 			}
 		} else if (pid > 0) {
-			if (bg)
+			if (bg) {
+				addjob(jobs, pid, BG, cmdline);
+				printf("[%d] (%d) %s\n", pid2jid(pid), (int)pid, cmdline);
 				waitpid(pid, &wstatus, 0);
+			} else {
+				addjob(jobs, pid, FG, cmdline);
+			}
 		} else {
 			unix_error("error: fork failed\n");
 		}
@@ -301,6 +303,19 @@ void waitfg(pid_t pid)
  */
 void sigchld_handler(int sig) 
 {
+	pid_t pid;
+	sigset_t set_all, oldset;
+	int olderrno = errno;
+
+	sigfillset(&set_all);
+	while ((pid = waitpid(-1, NULL, options)) != -1) {
+		sigprocmask(SIG_BLOCK, &set_all, &oldset); /* block all sig */
+		deletejob(jobs, pid);
+		sigprocmask(SIG_SETMASK, &oldset, NULL);
+	}
+	if (errno != ECHILD)
+		;
+	errno = olderrno;
 	return;
 }
 
